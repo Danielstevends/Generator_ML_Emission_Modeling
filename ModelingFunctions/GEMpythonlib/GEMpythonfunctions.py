@@ -22,6 +22,18 @@ from sklearn.metrics import accuracy_score, confusion_matrix, precision_score, r
 
 # from sklearn.ensemble import RandomForestClassifier
 
+#Assuming Un-Controlled NOx
+NOx_lb_hp_hr = 0.024
+CO_lb_hp_hr = 0.0055
+SOx_lb_hp_hr = 0.00809
+CO2_lb_hp_hr = 1.16
+PM_lb_hp_hr = 0.0007
+
+kwh_to_hp_hr = 1.341
+lb_to_gr = 453.592
+
+#Type of emissions
+emissions = ['NOx', 'CO', 'SOx', 'CO2', 'PM']
 
 # Functions
 def check_time_intervals(data, time_column='Time', interval_minutes=2):
@@ -629,6 +641,16 @@ def check_outage_series_data(df, column, threshold=10, window_size=30):
 
 # Function to calculate emissions
 def calculate_emissions(df):
+
+    NOx_lb_hp_hr = 0.024
+    CO_lb_hp_hr = 0.0055
+    SOx_lb_hp_hr = 0.00809
+    CO2_lb_hp_hr = 1.16
+    PM_lb_hp_hr = 0.0007
+
+    kwh_to_hp_hr = 1.341
+    lb_to_gr = 453.592
+
     df['NOx Emission (g)'] = df['power (kW)'] * NOx_lb_hp_hr * kwh_to_hp_hr * lb_to_gr
     df['CO Emission (g)'] = df['power (kW)'] * CO_lb_hp_hr * kwh_to_hp_hr * lb_to_gr
     df['SOx Emission (g)'] = df['power (kW)'] * SOx_lb_hp_hr * kwh_to_hp_hr * lb_to_gr
