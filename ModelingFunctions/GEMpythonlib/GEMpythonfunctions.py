@@ -37,6 +37,7 @@ lb_to_gr = 453.592
 #Type of emissions
 emissions = ['NOx', 'CO', 'SOx', 'CO2', 'PM']
 
+
 # Functions
 def check_time_intervals(data, time_column='Time', interval_minutes=2):
     """
@@ -353,8 +354,13 @@ def calculate_mean_flags(train_data, test_data, base_data, columns):
 ##############################################################################
 
 
-def process_time_series_data(train_df, test_df, high_freq_threshold, low_freq_threshold, high_volt_threshold,
-                             low_volt_threshold, time_column='Time'):
+def process_time_series_data(train_df, test_df,
+                             freq_lab_column='Frequency 3E2F4FD3 (Ch Cbca Bethesda Ndosho - laboratoire)',
+                             freq_clinique_column='Frequency C30F2E03 (Ch Cbca Bethesda Ndosho - clinique)',
+                             volt_lab_column='Voltage 3E2F4FD3 (Ch Cbca Bethesda Ndosho - laboratoire)',
+                             volt_clinique_column='Voltage C30F2E03 (Ch Cbca Bethesda Ndosho - clinique)',
+                             high_freq_threshold = None, low_freq_threshold = None, high_volt_threshold = None,
+                             low_volt_threshold = None, time_column='Time'):
     """
     Process time series data for both train and test DataFrames by calculating deltas, flagging delta changes,
     checking ranges, and memorizing previous high deltas.
@@ -374,10 +380,10 @@ def process_time_series_data(train_df, test_df, high_freq_threshold, low_freq_th
 
     def process_single_df(df):
         # Calculate delta for frequency and voltage
-        df = calculate_delta(df, 'Frequency 3E2F4FD3 (Ch Cbca Bethesda Ndosho - laboratoire)', 'Freq_delta_lab')
-        df = calculate_delta(df, 'Frequency C30F2E03 (Ch Cbca Bethesda Ndosho - clinique)', 'Freq_delta_clinique')
-        df = calculate_delta(df, 'Voltage 3E2F4FD3 (Ch Cbca Bethesda Ndosho - laboratoire)', 'Volt_delta_lab')
-        df = calculate_delta(df, 'Voltage C30F2E03 (Ch Cbca Bethesda Ndosho - clinique)', 'Volt_delta_clinique')
+        df = calculate_delta(df, freq_lab_column, 'Freq_delta_lab')
+        df = calculate_delta(df, freq_clinique_column, 'Freq_delta_clinique')
+        df = calculate_delta(df, volt_lab_column, 'Volt_delta_lab')
+        df = calculate_delta(df, volt_clinique_column, 'Volt_delta_clinique')
 
         # Flagging if the delta of change is negative or positive
         df['freq_delta_negative_lab'] = df['Freq_delta_lab'] < 0
@@ -387,20 +393,20 @@ def process_time_series_data(train_df, test_df, high_freq_threshold, low_freq_th
 
         # Checking whether the frequency and voltage are within the reasonable range
         df['freq_in_range_lab'] = (
-                (df['Frequency 3E2F4FD3 (Ch Cbca Bethesda Ndosho - laboratoire)'] <= high_freq_threshold) &
-                (df['Frequency 3E2F4FD3 (Ch Cbca Bethesda Ndosho - laboratoire)'] >= low_freq_threshold)
+                (df[freq_lab_column] <= high_freq_threshold) &
+                (df[freq_lab_column] >= low_freq_threshold)
         )
         df['volt_in_range_lab'] = (
-                (df['Voltage 3E2F4FD3 (Ch Cbca Bethesda Ndosho - laboratoire)'] <= high_volt_threshold) &
-                (df['Voltage 3E2F4FD3 (Ch Cbca Bethesda Ndosho - laboratoire)'] >= low_volt_threshold)
+                (df[volt_lab_column] <= high_volt_threshold) &
+                (df[volt_lab_column] >= low_volt_threshold)
         )
         df['freq_in_range_clinique'] = (
-                (df['Frequency C30F2E03 (Ch Cbca Bethesda Ndosho - clinique)'] <= high_freq_threshold) &
-                (df['Frequency C30F2E03 (Ch Cbca Bethesda Ndosho - clinique)'] >= low_freq_threshold)
+                (df[freq_clinique_column] <= high_freq_threshold) &
+                (df[freq_clinique_column] >= low_freq_threshold)
         )
         df['volt_in_range_clinique'] = (
-                (df['Voltage C30F2E03 (Ch Cbca Bethesda Ndosho - clinique)'] <= high_volt_threshold) &
-                (df['Voltage C30F2E03 (Ch Cbca Bethesda Ndosho - clinique)'] >= low_volt_threshold)
+                (df[volt_clinique_column] <= high_volt_threshold) &
+                (df[volt_clinique_column] >= low_volt_threshold)
         )
 
         # One-hot encoding for hours of the day
@@ -643,7 +649,6 @@ def check_outage_series_data(df, column, threshold=10, window_size=30):
 
 # Function to calculate emissions
 def calculate_emissions(df):
-
     NOx_lb_hp_hr = 0.024
     CO_lb_hp_hr = 0.0055
     SOx_lb_hp_hr = 0.00809
@@ -899,7 +904,7 @@ def generate_hmm(df, columns, n_states=4, cov_type="full", n_iteration=1000, ran
     hmm_feature_cols = []
 
     for col in columns:
-        X = df_result[col].fillna(0).to_numpy().reshape(-1, 1)
+        X = df_result[col].replace([np.inf, -np.inf], 0).fillna(0).to_numpy().reshape(-1, 1)
         hmm = GaussianHMM(
             n_components=n_states,
             covariance_type=cov_type,
@@ -961,8 +966,6 @@ def apply_hmm(df, columns, hmm_models):
         df_result = pd.concat([df_result, dummies], axis=1)
 
     return df_result
-
-
 
 
 ##############################################################################
