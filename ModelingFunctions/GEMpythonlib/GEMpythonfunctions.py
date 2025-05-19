@@ -2,6 +2,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+
 # import openpyxl
 # import sklearn
 # import seaborn as sns
@@ -16,6 +17,7 @@ import matplotlib.pyplot as plt
 # from sklearn.linear_model import LogisticRegression
 
 from sklearn.metrics import accuracy_score, confusion_matrix, precision_score, recall_score, mean_squared_error
+from hmmlearn.hmm import GaussianHMM
 
 # from sklearn.model_selection import train_test_split
 # from sklearn.model_selection import GridSearchCV
@@ -34,6 +36,7 @@ lb_to_gr = 453.592
 
 #Type of emissions
 emissions = ['NOx', 'CO', 'SOx', 'CO2', 'PM']
+
 
 # Functions
 def check_time_intervals(data, time_column='Time', interval_minutes=2):
@@ -351,8 +354,13 @@ def calculate_mean_flags(train_data, test_data, base_data, columns):
 ##############################################################################
 
 
-def process_time_series_data(train_df, test_df, high_freq_threshold, low_freq_threshold, high_volt_threshold,
-                             low_volt_threshold, time_column='Time'):
+def process_time_series_data(train_df, test_df,
+                             freq_lab_column='Frequency 3E2F4FD3 (Ch Cbca Bethesda Ndosho - laboratoire)',
+                             freq_clinique_column='Frequency C30F2E03 (Ch Cbca Bethesda Ndosho - clinique)',
+                             volt_lab_column='Voltage 3E2F4FD3 (Ch Cbca Bethesda Ndosho - laboratoire)',
+                             volt_clinique_column='Voltage C30F2E03 (Ch Cbca Bethesda Ndosho - clinique)',
+                             high_freq_threshold = None, low_freq_threshold = None, high_volt_threshold = None,
+                             low_volt_threshold = None, time_column='Time'):
     """
     Process time series data for both train and test DataFrames by calculating deltas, flagging delta changes,
     checking ranges, and memorizing previous high deltas.
@@ -372,10 +380,10 @@ def process_time_series_data(train_df, test_df, high_freq_threshold, low_freq_th
 
     def process_single_df(df):
         # Calculate delta for frequency and voltage
-        df = calculate_delta(df, 'Frequency 3E2F4FD3 (Ch Cbca Bethesda Ndosho - laboratoire)', 'Freq_delta_lab')
-        df = calculate_delta(df, 'Frequency C30F2E03 (Ch Cbca Bethesda Ndosho - clinique)', 'Freq_delta_clinique')
-        df = calculate_delta(df, 'Voltage 3E2F4FD3 (Ch Cbca Bethesda Ndosho - laboratoire)', 'Volt_delta_lab')
-        df = calculate_delta(df, 'Voltage C30F2E03 (Ch Cbca Bethesda Ndosho - clinique)', 'Volt_delta_clinique')
+        df = calculate_delta(df, freq_lab_column, 'Freq_delta_lab')
+        df = calculate_delta(df, freq_clinique_column, 'Freq_delta_clinique')
+        df = calculate_delta(df, volt_lab_column, 'Volt_delta_lab')
+        df = calculate_delta(df, volt_clinique_column, 'Volt_delta_clinique')
 
         # Flagging if the delta of change is negative or positive
         df['freq_delta_negative_lab'] = df['Freq_delta_lab'] < 0
@@ -385,20 +393,20 @@ def process_time_series_data(train_df, test_df, high_freq_threshold, low_freq_th
 
         # Checking whether the frequency and voltage are within the reasonable range
         df['freq_in_range_lab'] = (
-                (df['Frequency 3E2F4FD3 (Ch Cbca Bethesda Ndosho - laboratoire)'] <= high_freq_threshold) &
-                (df['Frequency 3E2F4FD3 (Ch Cbca Bethesda Ndosho - laboratoire)'] >= low_freq_threshold)
+                (df[freq_lab_column] <= high_freq_threshold) &
+                (df[freq_lab_column] >= low_freq_threshold)
         )
         df['volt_in_range_lab'] = (
-                (df['Voltage 3E2F4FD3 (Ch Cbca Bethesda Ndosho - laboratoire)'] <= high_volt_threshold) &
-                (df['Voltage 3E2F4FD3 (Ch Cbca Bethesda Ndosho - laboratoire)'] >= low_volt_threshold)
+                (df[volt_lab_column] <= high_volt_threshold) &
+                (df[volt_lab_column] >= low_volt_threshold)
         )
         df['freq_in_range_clinique'] = (
-                (df['Frequency C30F2E03 (Ch Cbca Bethesda Ndosho - clinique)'] <= high_freq_threshold) &
-                (df['Frequency C30F2E03 (Ch Cbca Bethesda Ndosho - clinique)'] >= low_freq_threshold)
+                (df[freq_clinique_column] <= high_freq_threshold) &
+                (df[freq_clinique_column] >= low_freq_threshold)
         )
         df['volt_in_range_clinique'] = (
-                (df['Voltage C30F2E03 (Ch Cbca Bethesda Ndosho - clinique)'] <= high_volt_threshold) &
-                (df['Voltage C30F2E03 (Ch Cbca Bethesda Ndosho - clinique)'] >= low_volt_threshold)
+                (df[volt_clinique_column] <= high_volt_threshold) &
+                (df[volt_clinique_column] >= low_volt_threshold)
         )
 
         # One-hot encoding for hours of the day
@@ -641,7 +649,6 @@ def check_outage_series_data(df, column, threshold=10, window_size=30):
 
 # Function to calculate emissions
 def calculate_emissions(df):
-
     NOx_lb_hp_hr = 0.024
     CO_lb_hp_hr = 0.0055
     SOx_lb_hp_hr = 0.00809
@@ -861,3 +868,159 @@ def generator_emission_summary(data):
         display(monthly_summary)
 
     # return year_summary, monthly_summary
+
+
+##############################################################################
+############################# HMM IMPLEMENTATION #############################
+##############################################################################
+
+
+def generate_hmm(df, columns, n_states=4, cov_type="full", n_iteration=1000, rand_state=42):
+    """
+    Generate HMM models for selected columns and one-hot encode the predicted states.
+
+    Parameters:
+    - df (DataFrame): The DataFrame containing the data.
+    - columns (list): A list of column names to generate HMMs for.
+    - n_states (int): Number of HMM states.
+    - cov_type (str): Covariance type for GaussianHMM.
+    - n_iteration (int): Number of iterations for model training.
+    - rand_state (int): Random seed.
+
+    Returns:
+    - df_result (DataFrame): DataFrame with HMM states and one-hot encoded columns.
+    - hmm_models (dict): Dictionary of trained HMM models by column name.
+    - hmm_feature_cols (list): List of one-hot encoded column names created.
+    """
+    df_result = df.copy()
+    df_columns = set(df_result.columns)
+    requested_columns = set(columns)
+
+    if requested_columns != df_columns.intersection(requested_columns):
+        missing = requested_columns - df_columns
+        raise ValueError(f"❌ The following columns are missing from the DataFrame: {missing}")
+
+    hmm_models = {}
+    hmm_feature_cols = []
+
+    for col in columns:
+        X = df_result[col].replace([np.inf, -np.inf], 0).fillna(0).to_numpy().reshape(-1, 1)
+        hmm = GaussianHMM(
+            n_components=n_states,
+            covariance_type=cov_type,
+            n_iter=n_iteration,
+            random_state=rand_state
+        )
+        hmm.fit(X)
+
+        hmm_models[col] = hmm
+        state_col = f'HMM_State_{col}'
+        df_result[state_col] = hmm.predict(X)
+
+        # One-hot encode only the new state column
+        dummies = pd.get_dummies(df_result[state_col], prefix=state_col)
+        df_result = pd.concat([df_result, dummies], axis=1)
+        hmm_feature_cols.extend(dummies.columns.tolist())
+
+    return df_result, hmm_models, hmm_feature_cols
+
+
+##############################################################################
+
+
+def apply_hmm(df, columns, hmm_models):
+    """
+    Apply trained HMM models to new data and one-hot encode the predicted states.
+
+    Parameters:
+    - df (DataFrame): The DataFrame containing the test data.
+    - columns (list): A list of column names to apply HMMs on.
+    - hmm_models (dict): Dictionary of trained HMM models by column name.
+
+    Returns:
+    - df_result (DataFrame): DataFrame with HMM states and one-hot encoded columns.
+    """
+    model_columns = set(hmm_models.keys())
+    input_columns = set(columns)
+
+    if input_columns != model_columns:
+        missing = input_columns - model_columns
+        extra = model_columns - input_columns
+        raise ValueError(
+            f"Column mismatch:\n"
+            f" - Missing models for: {missing if missing else 'None'}\n"
+            f" - Extra models not used: {extra if extra else 'None'}"
+        )
+
+    df_result = df.copy()
+
+    for col in columns:
+        X = df_result[col].fillna(0).to_numpy().reshape(-1, 1)
+        model = hmm_models[col]
+
+        state_col = f'HMM_State_{col}'
+        df_result[state_col] = model.predict(X)
+
+        # One-hot encode the new state column
+        dummies = pd.get_dummies(df_result[state_col], prefix=state_col)
+        df_result = pd.concat([df_result, dummies], axis=1)
+
+    return df_result
+
+
+##############################################################################
+
+def show_hmm_result(train_data, hmm_columns, time_col='Time', n_states=None, y_max=250):
+    """
+    Visualize HMM state assignments over time for selected columns.
+
+    Parameters:
+    - train_data (DataFrame): The DataFrame containing the original data and HMM state predictions.
+    - hmm_columns (list): A list of column names (original feature names) to visualize with their associated HMM states.
+    - time_col (str): Name of the column representing time or sequence order. Default is 'Time'.
+    - n_states (int, optional): Number of HMM states used for labeling the plot title. If None, inferred from data.
+    - y_max (float): Maximum value for the y-axis to limit the plot height. Default is 250.
+
+    Displays:
+    - For each selected column:
+        - A line plot of the feature values over time.
+        - Colored regions indicating different HMM-predicted states.
+        - A printed summary of the mean value of the feature in each HMM state.
+    """
+
+    for col in hmm_columns:
+        state_col = f'HMM_State_{col}'
+
+        if state_col not in train_data.columns:
+            print(f"Column {state_col} not found in data. Skipping...")
+            continue
+
+        state_means = train_data.groupby(state_col)[col].mean().sort_values()
+        detected_states = state_means.index.tolist()
+
+        print(f"\nMean values per HMM state for {col}:")
+        print(state_means)
+
+        plt.figure(figsize=(14, 4))
+        plt.plot(train_data[time_col], train_data[col], label=col, color='black')
+        plt.ylim(0, y_max)  # 🔧 Limit y-axis
+
+        default_colors = ['blue', 'green', 'red', 'purple', 'orange', 'cyan', 'magenta', 'yellow']
+        colors = default_colors * ((len(detected_states) // len(default_colors)) + 1)
+
+        for idx, state in enumerate(detected_states):
+            plt.fill_between(
+                train_data[time_col],
+                train_data[col],
+                where=(train_data[state_col] == state),
+                color=colors[idx],
+                alpha=0.2,
+                label=f'HMM State {state} (mean={state_means[state]:.1f})'
+            )
+
+        n_states_used = n_states if n_states is not None else len(detected_states)
+        plt.title(f"{col} with HMM-Inferred States (n_components={n_states_used})")
+        plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
+        plt.show()
