@@ -506,16 +506,28 @@ def plot_predictions(data, model_name, time_column='Time', prediction_column='pr
             ax2.plot(data[time_column], data[volt_clinique_column], label='Voltage Clinique', color='brown',
                      linestyle='--')
 
-        # Set the y-axis limits for frequency and voltage if either is plotted
-        ax2.set_ylim(0, 270)  # Voltage and frequency common limit (0-250)
-        ax2.set_yticks(range(0, 271, 50))  # Set ticks for every 50 units
 
         # Set the label for the secondary axis (Frequency and Voltage)
-        ax2.set_ylabel('Frequency (Hz) / Voltage (V)', color='black')
+        if include_frequency and include_voltage:
+            # Set the y-axis limits for frequency and voltage if either is plotted
+            ax2.set_ylim(0, 275)  # Voltage and frequency common limit (0-250)
+            ax2.set_yticks(range(0, 275, 25))  # Set ticks for every 50 units
+            ax2.set_ylabel('Frequency (Hz) / Voltage (V)', color='black')
+        elif include_frequency and not include_voltage:
+            # Set the y-axis limits for frequency and voltage if either is plotted
+            ax2.set_ylim(0, 60)  # Voltage and frequency common limit (0-250)
+            ax2.set_yticks(range(0, 60, 10))  # Set ticks for every 50 units
+            ax2.set_ylabel('Frequency (Hz)', color='black')
+        else:
+            # Set the y-axis limits for frequency and voltage if either is plotted
+            ax2.set_ylim(0, 275)  # Voltage and frequency common limit (0-250)
+            ax2.set_yticks(range(0, 275, 25))  # Set ticks for every 50 units
+            ax2.set_ylabel('Voltage (V)', color='black')
+
         ax2.tick_params(axis='y', labelcolor='black')
 
-        # Combine legends from both axes
-        fig.legend(loc="upper right", bbox_to_anchor=(1, 1), bbox_transform=ax1.transAxes)
+    # Combine legends from both axes and place it outside the plot
+    fig.legend(loc="upper center", bbox_to_anchor=(1.15, 1), bbox_transform=ax1.transAxes, borderaxespad=0)
 
     # Show the plot
     plt.tight_layout()
