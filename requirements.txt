@@ -19,3 +19,5 @@ langchain-community
 chromadb
 tiktoken
 sentence-transformers
+ruptures
+hmmlearn
