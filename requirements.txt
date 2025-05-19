@@ -1,7 +1,21 @@
-pandas ==2.2.2
-matplotlib >=3.9.2
-openpyxl >= 3.1.5
-scikit-learn >=1.5.2, <1.6
-seaborn >=0.13.2
-statsmodels >=0.14.4
-xgboost >=2.1.2
+jupyter
+pandas
+matplotlib
+openpyxl
+scikit-learn
+seaborn
+statsmodels
+xgboost
+requests
+Groq
+langchain
+langchain_core
+langchain_groq
+groq
+openai
+requests
+python-dotenv  # If you are using environment variables from a .env file
+langchain-community
+chromadb
+tiktoken
+sentence-transformers

@@ -22,12 +22,18 @@ from sklearn.metrics import accuracy_score, confusion_matrix, precision_score, r
 
 # from sklearn.ensemble import RandomForestClassifier
 
-# Constants
+#Assuming Un-Controlled NOx
 NOx_lb_hp_hr = 0.024
 CO_lb_hp_hr = 0.0055
 SOx_lb_hp_hr = 0.00809
 CO2_lb_hp_hr = 1.16
 PM_lb_hp_hr = 0.0007
+
+kwh_to_hp_hr = 1.341
+lb_to_gr = 453.592
+
+#Type of emissions
+emissions = ['NOx', 'CO', 'SOx', 'CO2', 'PM']
 
 # Functions
 def check_time_intervals(data, time_column='Time', interval_minutes=2):
@@ -506,28 +512,16 @@ def plot_predictions(data, model_name, time_column='Time', prediction_column='pr
             ax2.plot(data[time_column], data[volt_clinique_column], label='Voltage Clinique', color='brown',
                      linestyle='--')
 
+        # Set the y-axis limits for frequency and voltage if either is plotted
+        ax2.set_ylim(0, 270)  # Voltage and frequency common limit (0-250)
+        ax2.set_yticks(range(0, 271, 50))  # Set ticks for every 50 units
 
         # Set the label for the secondary axis (Frequency and Voltage)
-        if include_frequency and include_voltage:
-            # Set the y-axis limits for frequency and voltage if either is plotted
-            ax2.set_ylim(0, 275)  # Voltage and frequency common limit (0-250)
-            ax2.set_yticks(range(0, 275, 25))  # Set ticks for every 50 units
-            ax2.set_ylabel('Frequency (Hz) / Voltage (V)', color='black')
-        elif include_frequency and not include_voltage:
-            # Set the y-axis limits for frequency and voltage if either is plotted
-            ax2.set_ylim(0, 60)  # Voltage and frequency common limit (0-250)
-            ax2.set_yticks(range(0, 60, 10))  # Set ticks for every 50 units
-            ax2.set_ylabel('Frequency (Hz)', color='black')
-        else:
-            # Set the y-axis limits for frequency and voltage if either is plotted
-            ax2.set_ylim(0, 275)  # Voltage and frequency common limit (0-250)
-            ax2.set_yticks(range(0, 275, 25))  # Set ticks for every 50 units
-            ax2.set_ylabel('Voltage (V)', color='black')
-
+        ax2.set_ylabel('Frequency (Hz) / Voltage (V)', color='black')
         ax2.tick_params(axis='y', labelcolor='black')
 
-    # Combine legends from both axes and place it outside the plot
-    fig.legend(loc="upper center", bbox_to_anchor=(1.15, 1), bbox_transform=ax1.transAxes, borderaxespad=0)
+        # Combine legends from both axes
+        fig.legend(loc="upper right", bbox_to_anchor=(1, 1), bbox_transform=ax1.transAxes)
 
     # Show the plot
     plt.tight_layout()
@@ -648,14 +642,12 @@ def check_outage_series_data(df, column, threshold=10, window_size=30):
 # Function to calculate emissions
 def calculate_emissions(df):
 
-    # Constants
     NOx_lb_hp_hr = 0.024
     CO_lb_hp_hr = 0.0055
     SOx_lb_hp_hr = 0.00809
     CO2_lb_hp_hr = 1.16
     PM_lb_hp_hr = 0.0007
 
-    # unit changes
     kwh_to_hp_hr = 1.341
     lb_to_gr = 453.592
 
@@ -810,9 +802,6 @@ def power_usage_summary(data):
 
 
 def generator_emission_summary(data):
-    # List of emissions
-    emissions = ['NOx', 'CO', 'SOx', 'CO2', 'PM']
-
     # Aggregating data
     data['Date'] = data['Time'].dt.date
     data['Month'] = data['Time'].dt.month
