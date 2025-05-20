@@ -6,18 +6,18 @@ scikit-learn
 seaborn
 statsmodels
 xgboost
-requests
-Groq
-langchain
-langchain_core
-langchain_groq
-groq
-openai
-requests
-python-dotenv  # If you are using environment variables from a .env file
-langchain-community
-chromadb
-tiktoken
-sentence-transformers
-ruptures
 hmmlearn
+ruptures
+#requests
+#Groq
+#langchain
+#langchain_core
+#langchain_groq
+#groq
+#openai
+#requests
+#python-dotenv  # If you are using environment variables from a .env file
+#langchain-community
+#chromadb
+#tiktoken
+#sentence-transformers
