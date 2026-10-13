@@ -1,7 +1,7 @@
 # Cross-Site Validation (Leave-One-Site-Out)
 ### Created by: Sylvia Imanirakiza
 
-Please note this branch is a continuation of the analysis in the main branch, focusing on zero shot evaluation. 
+Please note this branch is a continuation of the site-specific analysis in the main branch, focusing on zero shot evaluation. 
 
 This module checks how well the generator-usage models generalize to a healthcare facility they were not trained on. It uses leave-one-site-out (LOSO) cross-validation: the models are trained on all sites but one and tested on the site that was left out, and this is repeated for every site.
 
