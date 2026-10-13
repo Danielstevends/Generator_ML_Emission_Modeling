@@ -1,6 +1,7 @@
 # Cross-Site Validation (Leave-One-Site-Out)
 ### Created by: Sylvia Imanirakiza
 
+_Continuation of methods in the "main" branch for site specific models _
 
 This module checks how well the generator-usage models generalize to a healthcare facility they were not trained on. It uses leave-one-site-out (LOSO) cross-validation: the models are trained on all sites but one and tested on the site that was left out, and this is repeated for every site.
 
